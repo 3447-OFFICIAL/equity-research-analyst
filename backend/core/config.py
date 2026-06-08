@@ -15,7 +15,11 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     sec_user_agent: str = Field(default="AI Equity Research Analyst contact@example.com")
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+    langchain_tracing_v2: bool = True
+    langchain_api_key: str | None = None
+    langchain_project: str = "equity-research-analyst"
 
 @lru_cache
 def get_settings() -> Settings:

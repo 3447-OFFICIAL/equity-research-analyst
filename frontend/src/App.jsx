@@ -1,75 +1,94 @@
-import { Activity, BarChart3, FileSearch, ShieldAlert, TrendingUp } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { PlayCircle, CheckCircle, Loader2 } from 'lucide-react';
 
-const metrics = [
-  { label: "Revenue Trend", value: "+12.4%", icon: TrendingUp },
-  { label: "Risk Score", value: "Medium", icon: ShieldAlert },
-  { label: "Sentiment", value: "Positive", icon: Activity },
-  { label: "DCF Value", value: "$214", icon: BarChart3 },
-];
+export default function App() {
+  const [ticker, setTicker] = useState('AAPL');
+  const [taskId, setTaskId] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState('idle');
+  const [agent, setAgent] = useState('');
 
-function App() {
+  const handleGenerate = async () => {
+    // Mocking an API call to generate a report which returns a task ID
+    // const res = await fetch('/api/v1/reports/generate', { method: 'POST', body: JSON.stringify({ ticker }) });
+    // const data = await res.json();
+    const mockTaskId = `task-${Date.now()}`;
+    setTaskId(mockTaskId);
+    setStatus('processing');
+    setProgress(0);
+  };
+
+  useEffect(() => {
+    if (taskId && status === 'processing') {
+      const ws = new WebSocket(`ws://localhost:8000/ws/reports/stream/${taskId}`);
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.status === 'processing') {
+          setProgress(data.progress);
+          setAgent(data.current_agent);
+        } else if (data.status === 'completed') {
+          setStatus('completed');
+          setProgress(100);
+          setAgent('Report Generated Successfully!');
+          ws.close();
+        }
+      };
+
+      return () => ws.close();
+    }
+  }, [taskId, status]);
+
   return (
-    <main className="min-h-screen bg-slate-50 text-ink">
-      <section className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold">AI Equity Research Analyst</h1>
-            <p className="text-sm text-slate-600">Institutional research workflow dashboard</p>
-          </div>
-          <button className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
-            <FileSearch size={16} />
-            Research AAPL
-          </button>
-        </div>
-      </section>
-
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[220px_1fr]">
-        <nav className="space-y-1 text-sm">
-          {["Dashboard", "Company Search", "Research Report", "Competitor Comparison", "Portfolio Analysis"].map(
-            (item) => (
-              <a
-                className="block rounded-md px-3 py-2 font-medium text-slate-700 hover:bg-white hover:text-ink"
-                href="#"
-                key={item}
-              >
-                {item}
-              </a>
-            ),
-          )}
-        </nav>
-
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => {
-              const Icon = metric.icon;
-              return (
-                <article className="rounded-lg border border-line bg-white p-4" key={metric.label}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">{metric.label}</span>
-                    <Icon className="text-accent" size={18} />
-                  </div>
-                  <strong className="mt-3 block text-2xl">{metric.value}</strong>
-                </article>
-              );
-            })}
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">AI Equity Research Analyst</h1>
+        
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
+          <div className="flex gap-4 mb-4">
+            <input 
+              type="text" 
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter Ticker (e.g. AAPL)"
+            />
+            <button 
+              onClick={handleGenerate}
+              disabled={status === 'processing'}
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded flex items-center gap-2 font-medium transition disabled:opacity-50"
+            >
+              {status === 'processing' ? <Loader2 className="animate-spin" size={20} /> : <PlayCircle size={20} />}
+              Generate Report
+            </button>
           </div>
 
-          <section className="rounded-lg border border-line bg-white p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Recommendation</h2>
-              <span className="rounded-md bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
-                BUY
-              </span>
+          {status !== 'idle' && (
+            <div className="mt-8">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Status: {agent}</span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
             </div>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-700">
-              The dashboard shell is ready for live filing ingestion, RAG citations, valuation outputs,
-              and LangGraph agent recommendations.
-            </p>
-          </section>
+          )}
+
+          {status === 'completed' && (
+            <div className="mt-8 p-4 bg-green-900/30 border border-green-800 rounded flex items-center gap-3">
+              <CheckCircle className="text-green-500" />
+              <span className="text-green-100">Report is ready for review.</span>
+              <button className="ml-auto text-sm bg-green-700 hover:bg-green-600 px-3 py-1 rounded">
+                View Report
+              </button>
+            </div>
+          )}
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }
-
-export default App;
