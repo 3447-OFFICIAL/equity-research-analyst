@@ -1,15 +1,31 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import asyncio
+import redis.asyncio as redis
+from fastapi_limiter import FastAPILimiter
 
 from backend.app.routes import api_router
 from backend.core.config import settings
+from backend.core.logger import setup_logging, get_logger
+
+logger = get_logger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    setup_logging()
+    logger.info("Starting up API...")
+    redis_conn = redis.from_url(settings.celery_broker_url, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_conn)
+    yield
+    await redis_conn.aclose()
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="AI Equity Research Analyst API",
         version="0.1.0",
         description="Research automation API for filings, transcripts, RAG, valuation, and recommendations.",
+        lifespan=lifespan
     )
     app.add_middleware(
         CORSMiddleware,
@@ -21,7 +37,18 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
 
     @app.websocket("/ws/reports/stream/{task_id}")
-    async def websocket_endpoint(websocket: WebSocket, task_id: str):
+    async def websocket_endpoint(websocket: WebSocket, task_id: str, token: str):
+        import jwt
+        from backend.core.security import ALGORITHM
+        try:
+            payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+            if not payload.get("sub"):
+                await websocket.close(code=1008)
+                return
+        except Exception:
+            await websocket.close(code=1008)
+            return
+
         await websocket.accept()
         try:
             # Simulate streaming updates from Celery worker / LangGraph

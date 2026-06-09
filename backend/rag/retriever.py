@@ -16,10 +16,10 @@ class RetrievedDocument:
 
 class PineconeRetriever:
     def __init__(self):
-        self.pc = Pinecone(api_key=settings.pinecone_api_key or "MOCK_KEY")
+        self.pc = Pinecone(api_key=settings.pinecone_api_key)
         # In production, check if index exists first
         # self.index = self.pc.Index(settings.pinecone_index)
-        self.embeddings = OpenAIEmbeddings(openai_api_key=settings.openai_api_key or "MOCK_KEY")
+        self.embeddings = OpenAIEmbeddings(openai_api_key=settings.openai_api_key)
 
     async def add_documents(self, texts: list[str], metadatas: list[dict[str, Any]]) -> None:
         if not texts:

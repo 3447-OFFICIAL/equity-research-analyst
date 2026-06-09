@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 import httpx
 from bs4 import BeautifulSoup
+import re
+from fastapi import HTTPException
+from urllib.parse import quote
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from backend.core.config import settings
+from backend.core.guardrails import validate_ticker
+
 @dataclass(frozen=True)
 class FilingExtraction:
     ticker: str
@@ -17,7 +23,16 @@ class SECFilingIngestionService:
         self.headers = {"User-Agent": settings.sec_user_agent}
         self.base_url = "https://data.sec.gov/submissions"
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError))
+    )
     async def download_10k(self, ticker: str, cik: str) -> str:
+        ticker = validate_ticker(ticker)
+        if not re.match(r"^\d{1,10}$", cik):
+            raise HTTPException(status_code=400, detail="Invalid CIK format")
+        
         async with httpx.AsyncClient() as client:
             response = await client.get(f"{self.base_url}/CIK{cik.zfill(10)}.json", headers=self.headers)
             response.raise_for_status()

@@ -9,10 +9,12 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     log_level: str = "INFO"
+    secret_key: str = Field(..., description="Secret key for JWT generation")
     database_url: str = "postgresql+psycopg://equity:equity@localhost:5432/equity_research"
-    pinecone_api_key: str | None = None
+    pinecone_api_key: str
     pinecone_index: str = "equity-research"
-    openai_api_key: str | None = None
+    openai_api_key: str
+    fmp_api_key: str = Field(default="demo", description="FMP API Key")
     sec_user_agent: str = Field(default="AI Equity Research Analyst contact@example.com")
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     celery_broker_url: str = "redis://localhost:6379/0"

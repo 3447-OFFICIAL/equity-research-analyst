@@ -12,8 +12,11 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend ./backend
-COPY ingestion ./ingestion
+RUN useradd -m appuser
+COPY --chown=appuser:appuser backend ./backend
+COPY --chown=appuser:appuser ingestion ./ingestion
+
+USER appuser
 
 EXPOSE 8000
 

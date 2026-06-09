@@ -35,3 +35,17 @@ CREATE TABLE IF NOT EXISTS transcript_chunks (
 
 CREATE INDEX IF NOT EXISTS idx_filings_company_form ON filings(company_id, form_type);
 CREATE INDEX IF NOT EXISTS idx_transcript_chunks_company ON transcript_chunks(company_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'viewer',
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Insert default admin user: admin@example.com / admin123
+-- hashed with bcrypt: $2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjIQqiRQYm
+INSERT INTO users (email, hashed_password, role)
+VALUES ('admin@example.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjIQqiRQYm', 'admin')
+ON CONFLICT (email) DO NOTHING;

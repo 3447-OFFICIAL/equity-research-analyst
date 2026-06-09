@@ -52,3 +52,18 @@ jobs:
         CELERY_BROKER_URL: redis://localhost:6379/0
       run: |
         pytest tests/
+
+    - name: Run Bandit (SAST)
+      run: |
+        pip install bandit
+        bandit -r backend ingestion || echo "Bandit found potential issues"
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
